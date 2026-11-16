@@ -16,7 +16,9 @@ done
 gh run watch "$ID" --exit-status
 TMP=$HOME/apkdl; rm -rf "$TMP"; mkdir -p "$TMP"
 gh run download "$ID" -n apk -D "$TMP"
-cp -f "$TMP/app-debug.apk" ~/storage/downloads/app-debug.apk
+NOME=XCalendar-$(date +%d%m-%H%M).apk
+rm -f ~/storage/downloads/XCalendar-*.apk
+cp -f "$TMP/app-debug.apk" ~/storage/downloads/$NOME
 rm -rf "$TMP"
-echo "Pronto: APK em Downloads"
-termux-open ~/storage/downloads/app-debug.apk
+echo "Pronto: $NOME em Downloads"
+termux-open ~/storage/downloads/$NOME
