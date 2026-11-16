@@ -1,6 +1,5 @@
 package com.example.xcalendar
 
-import android.icu.util.ChineseCalendar
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -351,13 +350,6 @@ fun holidayOf(d: LocalDate): Holiday? = holCache.getOrPut(d.year) {
     )
 }[d]
 
-/** Dia e mês do calendário lunar chinês (ICU, disponível desde a API 24). */
-fun lunarOf(d: LocalDate): Pair<Int, Int> {
-    val date = java.util.Date.from(d.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
-    val c = ChineseCalendar(date)
-    return c.get(ChineseCalendar.DAY_OF_MONTH) to (c.get(ChineseCalendar.MONTH) + 1)
-}
-
 fun moonOf(d: LocalDate): String {
     val p = 29.530588853
     val age = (((d.toEpochDay() + 2440588.0 - 2451550.1) % p) + p) % p
@@ -367,14 +359,9 @@ fun moonOf(d: LocalDate): String {
 }
 
 fun daySub(d: LocalDate): Pair<String, Boolean> =
-    holidayOf(d)?.let { it.short to true } ?: lunarOf(d).let { (ld, lm) ->
-        (if (ld == 1) "${lm}º mês" else "$ld") to false
-    }
+    holidayOf(d)?.let { it.short to true } ?: ("" to false)
 
-fun metaLine(d: LocalDate): String {
-    val (ld, lm) = lunarOf(d)
-    return "${moonOf(d)} · Lunar: dia $ld do mês $lm"
-}
+fun metaLine(d: LocalDate): String = moonOf(d)
 
 @Composable
 fun HolidayCard(h: Holiday) {
