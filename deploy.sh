@@ -14,7 +14,7 @@ for i in $(seq 1 30); do
 done
 [ -z "$ID" ] && { echo "Build não encontrado"; exit 1; }
 gh run watch "$ID" --exit-status
-TMP=$(mktemp -d)
+TMP=$HOME/apkdl; rm -rf "$TMP"; mkdir -p "$TMP"
 gh run download "$ID" -n apk -D "$TMP"
 cp -f "$TMP/app-debug.apk" ~/storage/downloads/app-debug.apk
 rm -rf "$TMP"

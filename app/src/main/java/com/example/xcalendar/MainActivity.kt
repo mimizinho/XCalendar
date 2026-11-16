@@ -1,6 +1,11 @@
 package com.example.xcalendar
 
+import android.content.Context
 import android.os.Bundle
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.toArgb
+import org.json.JSONArray
+import org.json.JSONObject
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -68,7 +73,8 @@ fun CalendarScreen() {
     var selected by remember { mutableStateOf(today) }
     var showDialog by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Event?>(null) }
-    val events = remember { seedEvents(today) }
+    val context = LocalContext.current
+    val events = remember { loadEvents(context) }
     val pager = rememberPagerState(initialPage = BASE_PAGE, pageCount = { BASE_PAGE * 2 })
     val scope = rememberCoroutineScope()
     val visibleMonth = YearMonth.from(today).plusMonths((pager.currentPage - BASE_PAGE).toLong())
@@ -147,7 +153,7 @@ fun CalendarScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(dayEvents, key = { it.id }) { ev ->
-                    EventCard(ev, onEdit = { editing = ev; showDialog = true }) { events.remove(ev) }
+                    EventCard(ev, onEdit = { editing = ev; showDialog = true }) { events.remove(ev); saveEvents(context, events) }
                 }
             }
         }
@@ -161,6 +167,7 @@ fun CalendarScreen() {
             onSave = { ev ->
                 val i = events.indexOfFirst { it.id == ev.id }
                 if (i >= 0) events[i] = ev else events.add(ev)
+                saveEvents(context, events)
                 showDialog = false
             }
         )
@@ -307,13 +314,44 @@ fun AddEventDialog(date: LocalDate, existing: Event? = null, onDismiss: () -> Un
 }
 
 // ---------- Dados de exemplo ----------
-fun seedEvents(today: LocalDate): SnapshotStateList<Event> = mutableStateListOf(
-    Event(1, "Reunião de equipe", today, LocalTime.of(10, 0), Palette[1]),
-    Event(2, "Academia", today, LocalTime.of(18, 30), Palette[2]),
-    Event(3, "Dentista", today.plusDays(2), LocalTime.of(14, 0), Palette[0]),
-    Event(4, "Aniversário da Ana", today.plusDays(5), null, Palette[3]),
-    Event(5, "Entrega do projeto", today.plusDays(9), LocalTime.of(9, 0), Palette[1])
-)
+private const val PREFS = "xcalendar"
+private const val KEY = "events"
+
+fun loadEvents(context: Context): SnapshotStateList<Event> {
+    val list = mutableStateListOf<Event>()
+    val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getString(KEY, null) ?: return list
+    runCatching {
+        val arr = JSONArray(raw)
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            list.add(
+                Event(
+                    o.getLong("id"), o.getString("title"),
+                    LocalDate.parse(o.getString("date")),
+                    if (o.isNull("time")) null else LocalTime.parse(o.getString("time")),
+                    Color(o.getInt("color"))
+                )
+            )
+        }
+    }
+    return list
+}
+
+fun saveEvents(context: Context, events: List<Event>) {
+    val arr = JSONArray()
+    events.forEach { e ->
+        arr.put(JSONObject().apply {
+            put("id", e.id)
+            put("title", e.title)
+            put("date", e.date.toString())
+            put("time", e.time?.toString() ?: JSONObject.NULL)
+            put("color", e.color.toArgb())
+        })
+    }
+    context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .edit().putString(KEY, arr.toString()).apply()
+}
 
 // ---------- Feriados, calendário lunar e fases da lua ----------
 data class Holiday(val short: String, val name: String, val note: String)
